@@ -12,6 +12,7 @@ const multer = require('multer');
 
 const app = express();
 const port = process.env.PORT;
+app.use(cors());
 //module.exports = app;
 const stripe = require('stripe')('sk_test_51OAf3dEFbooIJPsjARXvnzJo13Hq8ArzV4bUbZew57Yjsw8GnDYq4IDoSWN36tpHXuaroWu239gcrx7xbRBDWpqd00BV6pxEWp');
 
@@ -48,8 +49,7 @@ const upload = multer({ storage: storage });
 
 app.use(bodyParser.json());
 
-// Enable CORS for all routes
-app.use(cors());
+
 
 // Serve the React frontend from the 'src' directory
 app.use('/img/products', express.static(path.join(__dirname, '../img/products')));
