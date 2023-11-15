@@ -202,6 +202,8 @@ app.post('/marketzone/api/listProducts', authenticateToken, upload.single('image
       res.json({ success: true, message: 'Product listed successfully' });
     }
   });
+
+  res.header('Access-Control-Allow-Origin', '*');
 });
 
 //API endpoint to fetch the user's product listings
