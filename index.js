@@ -309,7 +309,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { shippingAddress, billingAddress, cardToken, amount } = req.body;
 
-    //Create Billing and Shipping Addresses
+    // Create Billing and Shipping Addresses
     const createBillingAddressSQL = `
       INSERT INTO billing_addresses (user_id, street, city, state, zip)
       VALUES (?, ?, ?, ?, ?)
@@ -339,7 +339,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     const billingAddressId = billingAddressResult[0].insertId;
     const shippingAddressId = shippingAddressResult[0].insertId;
 
-    
+    // Create Order
     const createOrderSQL = `
       INSERT INTO orders (user_id, billing_address_id, shipping_address_id, total_amount)
       VALUES (?, ?, ?, ?)
@@ -354,9 +354,9 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
 
     const orderId = orderResult[0].insertId;
 
-    //  Fetch Cart Items
+    // Fetch Cart Items
     const cartItemsSQL = `
-      SELECT p.id AS product_id, p.name, p.price, c.quantity
+      SELECT c.product_id, p.name, p.price, c.quantity, p.quantity AS available_quantity
       FROM cart c
       INNER JOIN products p ON c.product_id = p.id
       WHERE c.user_id = ?
@@ -365,7 +365,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     const cartItemsResult = await db.promise().query(cartItemsSQL, [userId]);
     const cartItems = cartItemsResult[0];
 
-    // Create Order Items
+    // Create Order Items and update product quantities
     const orderItems = cartItems.map((cartItem) => [
       orderId,
       cartItem.product_id,
@@ -378,7 +378,16 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       VALUES (?, ?, ?, ?)
     `;
 
-    await Promise.all(orderItems.map((item) => db.promise().execute(createOrderItemsSQL, item)));
+    const updateProductQuantitySQL = `
+      UPDATE products SET quantity = quantity - ? WHERE id = ?
+    `;
+
+    await Promise.all(
+      orderItems.map(async (item) => {
+        await db.promise().execute(createOrderItemsSQL, item);
+        await db.promise().execute(updateProductQuantitySQL, [item[2], item[1]]);
+      })
+    );
 
     // Clear Cart
     const clearCartSQL = 'DELETE FROM cart WHERE user_id = ?';
@@ -390,6 +399,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: 'Checkout failed' });
   }
 });
+
 
 
 app.get('/marketzone/api/orders', authenticateToken, (req, res) => {
