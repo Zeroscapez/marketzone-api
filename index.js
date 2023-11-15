@@ -204,7 +204,7 @@ app.get('/marketzone/api/userProducts', authenticateToken, (req, res) => {
   const userId = req.user.id;
 
   // Implement the logic to fetch the user's product listings from your database
-  const sql = `SELECT id, image, name, description, price FROM products WHERE user_id = ?`;
+  const sql = `SELECT id, image, name, description, price, quantity FROM products WHERE user_id = ?`;
 
   db.query(sql, [userId], (error, results) => {
     if (error) {
@@ -216,10 +216,11 @@ app.get('/marketzone/api/userProducts', authenticateToken, (req, res) => {
   });
 });
 
+
 app.get('/marketzone/api/products', (req, res) => {
-  // Query all products with user information
+  // Query all products with user information, including quantity
   const sql = `
-    SELECT p.id, p.image, p.name, p.description, p.price, u.username
+    SELECT p.id, p.image, p.name, p.description, p.price, p.quantity, u.username
     FROM products p
     INNER JOIN users u ON p.user_id = u.id
   `;
@@ -233,6 +234,7 @@ app.get('/marketzone/api/products', (req, res) => {
     }
   });
 });
+
 
 //API endpoint for fetching the user's cart items
 app.get('/marketzone/api/cart', authenticateToken, (req, res) => {
