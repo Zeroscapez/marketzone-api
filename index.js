@@ -7,7 +7,7 @@ const path = require('path');
 const secretKey = process.env.SECRET_KEY;
 const jwt = require('jsonwebtoken');
 const authenticateToken = require('./authMiddleware');
-const multer = require('multer');
+//const multer = require('multer');
 
 
 const app = express();
@@ -35,18 +35,6 @@ db.connect((err) => {
   console.log('Connected to MySQL');
 });
 
-// Define storage for the uploaded files
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, process.env.PUBLIC_IMG); // Set the destination folder for uploaded files
-  },
-  filename: function (req, file, cb) {
-    // Use the original name of the file as the filename
-    cb(null, file.originalname);
-  },
-});
-
-const upload = multer({ storage: storage });
 
 
 app.use(bodyParser.json());
@@ -189,11 +177,9 @@ app.post('/marketzone/api/resetPassword', authenticateToken, (req, res) => {
 });
 
 // Add a new API endpoint for listing products
-app.post('/marketzone/api/listProducts', authenticateToken, upload.single('image'), (req, res) => {
-  res.header('Access-Control-Allow-Origin', '*');
+app.post('/marketzone/api/listProducts', authenticateToken, (req, res) => {
   const userId = req.user.id;
-  const { name, description, price } = req.body;
-  const image = "../img/products/" + req.file.filename; // Use the filename provided by multer
+  const { name, description, price, image } = req.body;
 
   // Implement the logic to insert the product listing into your MySQL database
   const sql = `INSERT INTO products (user_id, image, name, description, price) VALUES (?, ?, ?, ?, ?)`;
@@ -207,10 +193,8 @@ app.post('/marketzone/api/listProducts', authenticateToken, upload.single('image
       res.json({ success: true, message: 'Product listed successfully' });
     }
   });
-
-  
-  res.json({msg: 'This is CORS-enabled for all origins!'})
 });
+
 
 //API endpoint to fetch the user's product listings
 app.get('/marketzone/api/userProducts', authenticateToken, (req, res) => {
