@@ -65,7 +65,7 @@ app.get('/', (req, res) => {
 
 // Create an endpoint for user registration
 app.post('/marketzone/api/register', (req, res) => {
-  // ... (registration logic)
+  
 
   // Get the registration data from the request body
   const userData = req.body;
@@ -90,7 +90,7 @@ app.post('/marketzone/api/register', (req, res) => {
   // Enable CORS for this specific route
   res.header('Access-Control-Allow-Origin', '*');
 
-  // ... (response logic)
+  
 });
 
 
@@ -100,7 +100,7 @@ app.post('/marketzone/api/login', (req, res) => {
   const { username, password } = loginData;
 
   // Implement the logic to verify the user's credentials
-  const sql = `SELECT id, username FROM users WHERE username = ? AND password = ?`; // Include 'id' in the query
+  const sql = `SELECT id, username FROM users WHERE username = ? AND password = ?`; 
 
   db.query(sql, [username, password], (error, results) => {
     if (error) {
@@ -112,7 +112,7 @@ app.post('/marketzone/api/login', (req, res) => {
       } else {
         // User is authenticated; generate a JWT token
         const user = { id: results[0].id, username: username }; // Include 'id' in the payload
-        const token = jwt.sign(user, secretKey, { expiresIn: '10h' });
+        const token = jwt.sign(user, secretKey, { expiresIn: '24h' });
 
         // Send the token in the response
         res.json({ success: true, token });
@@ -264,8 +264,8 @@ app.post('/marketzone/api/addToCart', authenticateToken, (req, res) => {
   const userId = req.user.id;
   const product = req.body.product;
 
-  // Implement the logic to insert the product into the user's cart in your MySQL database
-  // You will need to adjust this SQL query based on your database schema.
+  // Implement the logic to insert the product into the user's cart
+ 
   const sql = `
   INSERT INTO cart (user_id, product_id, quantity)
   VALUES (?, ?, 1) 
@@ -288,8 +288,7 @@ app.delete('/marketzone/api/cart/:productId', authenticateToken, (req, res) => {
   const userId = req.user.id;
   const productId = req.params.productId;
 
-  // Implement the logic to delete the item from the user's cart in your database using productId.
-  // You will need to adjust this SQL query based on your database schema.
+  // Implement the logic to delete the item from the user's cart
   const sql = 'DELETE FROM cart WHERE user_id = ? AND product_id = ?';
 
   db.query(sql, [userId, productId], (error, results) => {
@@ -311,7 +310,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { shippingAddress, billingAddress, cardToken, amount } = req.body;
 
-    // Step 1: Create Billing and Shipping Addresses
+    //Create Billing and Shipping Addresses
     const createBillingAddressSQL = `
       INSERT INTO billing_addresses (user_id, street, city, state, zip)
       VALUES (?, ?, ?, ?, ?)
@@ -356,7 +355,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
 
     const orderId = orderResult[0].insertId;
 
-    // Step 3: Fetch Cart Items
+    //  Fetch Cart Items
     const cartItemsSQL = `
       SELECT p.id AS product_id, p.name, p.price, c.quantity
       FROM cart c
@@ -367,7 +366,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     const cartItemsResult = await db.promise().query(cartItemsSQL, [userId]);
     const cartItems = cartItemsResult[0];
 
-    // Step 4: Create Order Items
+    // Create Order Items
     const orderItems = cartItems.map((cartItem) => [
       orderId,
       cartItem.product_id,
@@ -382,7 +381,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
 
     await Promise.all(orderItems.map((item) => db.promise().execute(createOrderItemsSQL, item)));
 
-    // Step 5: Clear Cart
+    // Clear Cart
     const clearCartSQL = 'DELETE FROM cart WHERE user_id = ?';
     await db.promise().execute(clearCartSQL, [userId]);
 
