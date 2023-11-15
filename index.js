@@ -112,10 +112,12 @@ app.post('/marketzone/api/login', (req, res) => {
       } else {
         // User is authenticated; generate a JWT token
         const user = { id: results[0].id, username: username }; // Include 'id' in the payload
-        const token = jwt.sign(user, secretKey, { expiresIn: '1h' });
+        const token = jwt.sign(user, secretKey, { expiresIn: '24h' });
+
 
         // Send the token in the response
-        res.json({ success: true, token });
+        res.json({ success: true, token, expiresIn: 24 * 60 * 60 }); // expiresIn in seconds
+
       }
     }
   });
@@ -422,6 +424,19 @@ app.get('/marketzone/api/orders', authenticateToken, (req, res) => {
 });
 
 
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  connectionLimit: 10, // Adjust as needed
+});
+
+// To execute queries using the pool:
+pool.query('SELECT 1 + 1 AS solution', (error, results, fields) => {
+  if (error) throw error;
+  console.log('The solution is: ', results[0].solution);
+});
 
 
 
