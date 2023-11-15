@@ -150,7 +150,7 @@ app.get('/marketzone/api/accountDetails', authenticateToken, (req, res) => {
   const userId = req.user.id;
 
   // Query user account details from your database based on the userId
-  const sql = `SELECT first_name, last_name, username FROM users WHERE id = ?`;
+  const sql = `SELECT first_name, last_name, username, email FROM users WHERE id = ?`;
 
   db.query(sql, [userId], (error, results) => {
     if (error) {
