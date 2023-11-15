@@ -382,10 +382,20 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       UPDATE products SET quantity = quantity - ? WHERE id = ?
     `;
 
+    const removeProductSQL = `
+      DELETE FROM products WHERE id = ?
+    `;
+
     await Promise.all(
       orderItems.map(async (item) => {
         await db.promise().execute(createOrderItemsSQL, item);
         await db.promise().execute(updateProductQuantitySQL, [item[2], item[1]]);
+
+        // Check if the product's available_quantity reaches zero and remove it
+        const remainingQuantity = cartItem.available_quantity - item[2];
+        if (remainingQuantity <= 0) {
+          await db.promise().execute(removeProductSQL, [item[1]]);
+        }
       })
     );
 
@@ -399,6 +409,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: 'Checkout failed' });
   }
 });
+
 
 
 
