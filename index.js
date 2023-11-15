@@ -190,6 +190,7 @@ app.post('/marketzone/api/resetPassword', authenticateToken, (req, res) => {
 
 // Add a new API endpoint for listing products
 app.post('/marketzone/api/listProducts', authenticateToken, upload.single('image'), (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
   const userId = req.user.id;
   const { name, description, price } = req.body;
   const image = "../img/products/" + req.file.filename; // Use the filename provided by multer
@@ -207,7 +208,7 @@ app.post('/marketzone/api/listProducts', authenticateToken, upload.single('image
     }
   });
 
-  res.header('Access-Control-Allow-Origin', '*');
+  
   res.json({msg: 'This is CORS-enabled for all origins!'})
 });
 
