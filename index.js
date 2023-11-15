@@ -112,7 +112,7 @@ app.post('/marketzone/api/login', (req, res) => {
       } else {
         // User is authenticated; generate a JWT token
         const user = { id: results[0].id, username: username }; // Include 'id' in the payload
-        const token = jwt.sign(user, secretKey, { expiresIn: '24h' });
+        const token = jwt.sign(user, secretKey, { expiresIn: '1h' });
 
         // Send the token in the response
         res.json({ success: true, token });
