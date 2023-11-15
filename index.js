@@ -135,7 +135,7 @@ app.get('/marketzone/api/userData', authenticateToken, (req, res) => {
   });
 });
 
-// Add a new API endpoint for fetching user account details
+//  API endpoint for fetching user account details
 app.get('/marketzone/api/accountDetails', authenticateToken, (req, res) => {
   const userId = req.user.id;
 
@@ -158,7 +158,7 @@ app.get('/marketzone/api/accountDetails', authenticateToken, (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
 });
 
-// Add a new API endpoint for password reset
+//  API endpoint for password reset
 app.post('/marketzone/api/resetPassword', authenticateToken, (req, res) => {
   const userId = req.user.id;
   const newPassword = req.body.newPassword;
@@ -176,15 +176,18 @@ app.post('/marketzone/api/resetPassword', authenticateToken, (req, res) => {
   });
 });
 
-// Add a new API endpoint for listing products
+//  API endpoint for listing products
 app.post('/marketzone/api/listProducts', authenticateToken, (req, res) => {
   const userId = req.user.id;
-  const { name, description, price, image } = req.body;
+  const { name, description, price, image, quantity } = req.body;
 
   // Implement the logic to insert the product listing into your MySQL database
-  const sql = `INSERT INTO products (user_id, image, name, description, price) VALUES (?, ?, ?, ?, ?)`;
+  const sql = `
+    INSERT INTO products (user_id, image, name, description, price, quantity)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
 
-  db.query(sql, [userId, image, name, description, price], (error, results) => {
+  db.query(sql, [userId, image, name, description, price, quantity], (error, results) => {
     if (error) {
       console.error('Database error:', error);
       res.json({ success: false, message: 'Product listing failed' });
