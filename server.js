@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../../.env' }); // Replace 'path_to_securitytoken.env' with the actual file path
+require('dotenv').config({ path: '.env' }); // Replace 'path_to_securitytoken.env' with the actual file path
 const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
