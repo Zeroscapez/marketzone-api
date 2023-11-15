@@ -11,7 +11,7 @@ const multer = require('multer');
 
 
 const app = express();
-//const port = 3306;
+const port = process.env.PORT;
 //module.exports = app;
 const stripe = require('stripe')('sk_test_51OAf3dEFbooIJPsjARXvnzJo13Hq8ArzV4bUbZew57Yjsw8GnDYq4IDoSWN36tpHXuaroWu239gcrx7xbRBDWpqd00BV6pxEWp');
 
@@ -428,13 +428,9 @@ app.get('/marketzone/api/orders', authenticateToken, (req, res) => {
 
 
 
-// Define a catch-all route to serve the main HTML file
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../src/index.html'));
-});
 
-// Start the server
-//app.listen(port, () => {
-//  console.log(`Server is running on port ${port}`);
-//});
+//Start the Server
+app.listen(port, () => {
+ console.log(`Server is running on port ${port}`);
+});
 

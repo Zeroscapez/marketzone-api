@@ -1,8 +1,10 @@
 {
   "name": "website-app",
   "version": "0.1.0",
-  "homepage": "/",
   "private": true,
+  "engines": {
+    "node":"14.x"
+  },
   "dependencies": {
     "@stripe/react-stripe-js": "^2.3.1",
     "@stripe/stripe-js": "^2.1.11",
