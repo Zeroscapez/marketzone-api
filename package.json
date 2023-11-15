@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node":"18.x"
+    "node": "18.x"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^2.3.1",
@@ -33,9 +33,7 @@
     "webpack-cli": "^5.1.4"
   },
   "scripts": {
-   
     "start": "node index.js"
-   
   },
   "eslintConfig": {
     "extends": [
