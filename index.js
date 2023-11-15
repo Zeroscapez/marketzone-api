@@ -13,6 +13,7 @@ const multer = require('multer');
 const app = express();
 const port = process.env.PORT;
 app.use(cors());
+res.header('Access-Control-Allow-Origin', '*');
 //module.exports = app;
 const stripe = require('stripe')('sk_test_51OAf3dEFbooIJPsjARXvnzJo13Hq8ArzV4bUbZew57Yjsw8GnDYq4IDoSWN36tpHXuaroWu239gcrx7xbRBDWpqd00BV6pxEWp');
 
