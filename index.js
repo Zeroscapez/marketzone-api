@@ -189,7 +189,7 @@ app.post('/marketzone/api/resetPassword', authenticateToken, (req, res) => {
 });
 
 // Add a new API endpoint for listing products
-app.post('/marketzone/api/listProducts', authenticateToken, upload.single('image'), (req, res) => {
+app.post('/marketzone/api/listProducts', upload.single('image'), (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
   const userId = req.user.id;
   const { name, description, price } = req.body;
