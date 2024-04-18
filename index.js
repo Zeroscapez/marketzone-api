@@ -7,6 +7,7 @@ const path = require('path');
 const secretKey = process.env.SECRET_KEY;
 const jwt = require('jsonwebtoken');
 const authenticateToken = require('./authMiddleware');
+const nodemailer = require('nodemailer');
 //const multer = require('multer');
 
 
@@ -18,6 +19,16 @@ app.use(cors());
 //module.exports = app;
 const stripe = require('stripe')('sk_test_51OAf3dEFbooIJPsjARXvnzJo13Hq8ArzV4bUbZew57Yjsw8GnDYq4IDoSWN36tpHXuaroWu239gcrx7xbRBDWpqd00BV6pxEWp');
 
+// Configure nodemailer transporter
+const transporter = nodemailer.createTransport({
+  host: 'sandbox.smtp.mailtrap.io', // Your SMTP host
+  port: 2525, // Your SMTP port
+  secure: false, // Set to true if your SMTP server uses TLS
+  auth: {
+    user: '9cb89f7564dda1', // Your email address
+    pass: 'd44ee318bbbb9e', // Your email password or app password
+  },
+});
 
 // Create a MySQL database connection
 const db = mysql.createConnection({
@@ -307,16 +318,7 @@ app.delete('/marketzone/api/cart/:productId', authenticateToken, (req, res) => {
 app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { shippingAddress, billingAddress, cardToken, amount } = req.body;
-
-    // Calculate reward points earned from the order (2 points for every $1 spent)
-    const rewardPointsEarned = Math.floor(amount * 2);
-
-    // Update user's reward points
-    const updateRewardPointsSQL = `
-      UPDATE users SET reward_points = reward_points + ? WHERE id = ?
-    `;
-    await db.promise().execute(updateRewardPointsSQL, [rewardPointsEarned, userId]);
+    const { shippingAddress, billingAddress, cartItems, totalAmount } = req.body;
 
     // Create Billing and Shipping Addresses
     const createBillingAddressSQL = `
@@ -358,28 +360,17 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       userId,
       billingAddressId,
       shippingAddressId,
-      amount,
+      totalAmount,
     ]);
 
     const orderId = orderResult[0].insertId;
 
     // Fetch Cart Items
-    const cartItemsSQL = `
-      SELECT c.product_id, p.name, p.price, c.quantity, p.quantity AS available_quantity
-      FROM cart c
-      INNER JOIN products p ON c.product_id = p.id
-      WHERE c.user_id = ?
-    `;
-
-    const cartItemsResult = await db.promise().query(cartItemsSQL, [userId]);
-    const cartItems = cartItemsResult[0];
-
-    // Create Order Items and update product quantities
-    const orderItems = cartItems.map((cartItem) => [
+    const orderItems = cartItems.map((item) => [
       orderId,
-      cartItem.product_id,
-      cartItem.quantity,
-      cartItem.price * cartItem.quantity,
+      item.product_id,
+      item.quantity,
+      item.price * item.quantity,
     ]);
 
     const createOrderItemsSQL = `
@@ -387,24 +378,9 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       VALUES (?, ?, ?, ?)
     `;
 
-    const updateProductQuantitySQL = `
-      UPDATE products SET quantity = quantity - ? WHERE id = ?
-    `;
-
-    const removeProductSQL = `
-      DELETE FROM products WHERE id = ?
-    `;
-
     await Promise.all(
       orderItems.map(async (item) => {
         await db.promise().execute(createOrderItemsSQL, item);
-        await db.promise().execute(updateProductQuantitySQL, [item[2], item[1]]);
-
-        // Check if the product's available_quantity reaches zero and remove it
-        const remainingQuantity = item[4] - item[2]; // Using item instead of cartItem
-        if (remainingQuantity <= 0) {
-          await db.promise().execute(removeProductSQL, [item[1]]);
-        }
       })
     );
 
@@ -412,11 +388,44 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     const clearCartSQL = 'DELETE FROM cart WHERE user_id = ?';
     await db.promise().execute(clearCartSQL, [userId]);
 
-    res.json({ success: true, message: 'Checkout successful', orderId, rewardPointsEarned });
+    // Send email notification to the user
+    const mailOptions = {
+      from: 'your_email@example.com',
+      to: 'user@example.com', // Use the user's email address here
+      subject: 'Your order has been processed',
+      text: `
+        Your order has been successfully processed. Thank you for shopping with us!
+
+        Order ID: ${orderId}
+        Total Amount: $${totalAmount.toFixed(2)}
+
+        Shipping Address:
+        ${shippingAddress.street}
+        ${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.zip}
+
+        Billing Address:
+        ${billingAddress.street}
+        ${billingAddress.city}, ${billingAddress.state} ${billingAddress.zip}
+      `,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Email sending error:', error);
+      } else {
+        console.log('Email sent:', info.response);
+      }
+    });
+
+    res.json({ success: true, message: 'Checkout successful', orderId });
   } catch (error) {
     console.error('Checkout error:', error);
     res.status(500).json({ success: false, message: 'Checkout failed' });
   }
+});
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
 
 
