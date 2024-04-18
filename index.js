@@ -317,8 +317,18 @@ app.delete('/marketzone/api/cart/:productId', authenticateToken, (req, res) => {
 
 app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
   try {
+
     const userId = req.user.id;
     const { shippingAddress, billingAddress, cartItems, totalAmount } = req.body;
+
+
+    // Retrieve user's email address from the database
+    const getUserEmailSQL = `
+      SELECT email FROM users WHERE id = ?
+    `;
+
+    const [emailRows, _] = await db.promise().execute(getUserEmailSQL, [userId]);
+    const userEmail = emailRows[0].email;
 
     // Create Billing and Shipping Addresses
     const createBillingAddressSQL = `
@@ -390,8 +400,8 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
 
     // Send email notification to the user
     const mailOptions = {
-      from: 'your_email@example.com',
-      to: 'user@example.com', // Use the user's email address here
+      from: 'busterswordisbae@gmail.com',
+      to: 'agyeilomini@gmail.com', // Use the user's email address here
       subject: 'Your order has been processed',
       text: `
         Your order has been successfully processed. Thank you for shopping with us!
