@@ -48,14 +48,14 @@ app.use('/img/products', express.static(path.join(__dirname, '../img/products'))
 
 
 app.get('/', (req, res) => {
-    res.send('Welcome to My App'); // You can customize this message
-  });
+  res.send('Welcome to My App'); // You can customize this message
+});
 
 
 
 // Create an endpoint for user registration
 app.post('/marketzone/api/register', (req, res) => {
-  
+
 
   // Get the registration data from the request body
   const userData = req.body;
@@ -66,7 +66,7 @@ app.post('/marketzone/api/register', (req, res) => {
     INSERT INTO users (first_name, last_name, email, username, password, street, zip_code, state)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
-  
+
   db.query(sql, [first_name, last_name, email, username, password, street, zip_code, state], (error, results) => {
     if (error) {
       console.error('Database error:', error);
@@ -80,7 +80,7 @@ app.post('/marketzone/api/register', (req, res) => {
   // Enable CORS for this specific route
   res.header('Access-Control-Allow-Origin', '*');
 
-  
+
 });
 
 
@@ -90,7 +90,7 @@ app.post('/marketzone/api/login', (req, res) => {
   const { username, password } = loginData;
 
   // Implement the logic to verify the user's credentials
-  const sql = `SELECT id, username FROM users WHERE username = ? AND password = ?`; 
+  const sql = `SELECT id, username FROM users WHERE username = ? AND password = ?`;
 
   db.query(sql, [username, password], (error, results) => {
     if (error) {
@@ -264,7 +264,7 @@ app.post('/marketzone/api/addToCart', authenticateToken, (req, res) => {
   const product = req.body.product;
 
   // Implement the logic to insert the product into the user's cart
- 
+
   const sql = `
   INSERT INTO cart (user_id, product_id, quantity)
   VALUES (?, ?, 1) 
@@ -307,7 +307,7 @@ app.delete('/marketzone/api/cart/:productId', authenticateToken, (req, res) => {
 app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { shippingAddress, billingAddress, cardToken, amount } = req.body;
+    const { shippingAddress, billingAddress, cardToken } = req.body;
 
     // Create Billing and Shipping Addresses
     const createBillingAddressSQL = `
@@ -320,7 +320,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       VALUES (?, ?, ?, ?, ?)
     `;
 
-    const billingAddressResult = await db.promise().execute(createBillingAddressSQL, [
+    const [billingAddressResult] = await db.promise().execute(createBillingAddressSQL, [
       userId,
       billingAddress.street,
       billingAddress.city,
@@ -328,7 +328,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       billingAddress.zip,
     ]);
 
-    const shippingAddressResult = await db.promise().execute(createShippingAddressSQL, [
+    const [shippingAddressResult] = await db.promise().execute(createShippingAddressSQL, [
       userId,
       shippingAddress.street,
       shippingAddress.city,
@@ -336,34 +336,35 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       shippingAddress.zip,
     ]);
 
-    const billingAddressId = billingAddressResult[0].insertId;
-    const shippingAddressId = shippingAddressResult[0].insertId;
+    const billingAddressId = billingAddressResult.insertId;
+    const shippingAddressId = shippingAddressResult.insertId;
 
     // Create Order
     const createOrderSQL = `
-      INSERT INTO orders (user_id, billing_address_id, shipping_address_id, total_amount)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO orders (user_id, billing_address_id, shipping_address_id)
+      VALUES (?, ?, ?)
     `;
 
-    const orderResult = await db.promise().execute(createOrderSQL, [
+    const [orderResult] = await db.promise().execute(createOrderSQL, [
       userId,
       billingAddressId,
       shippingAddressId,
-      amount,
     ]);
 
-    const orderId = orderResult[0].insertId;
+    const orderId = orderResult.insertId;
 
     // Fetch Cart Items
     const cartItemsSQL = `
-      SELECT c.product_id, p.name, p.price, c.quantity, p.quantity AS available_quantity
+      SELECT c.product_id, p.price, c.quantity
       FROM cart c
       INNER JOIN products p ON c.product_id = p.id
       WHERE c.user_id = ?
     `;
 
-    const cartItemsResult = await db.promise().query(cartItemsSQL, [userId]);
-    const cartItems = cartItemsResult[0];
+    const [cartItemsResult] = await db.promise().query(cartItemsSQL, [userId]);
+    const cartItems = cartItemsResult;
+
+    let totalAmount = 0;
 
     // Create Order Items and update product quantities
     const orderItems = cartItems.map((cartItem) => [
@@ -388,16 +389,25 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
 
     await Promise.all(
       orderItems.map(async (item) => {
+        totalAmount += item[3]; // Accumulate total amount
+
         await db.promise().execute(createOrderItemsSQL, item);
         await db.promise().execute(updateProductQuantitySQL, [item[2], item[1]]);
 
-        // Check if the product's available_quantity reaches zero and remove it
+        // Check if the product's available quantity reaches zero and remove it
         const remainingQuantity = cartItem.available_quantity - item[2];
         if (remainingQuantity <= 0) {
           await db.promise().execute(removeProductSQL, [item[1]]);
         }
       })
     );
+
+    // Update total amount in the orders table
+    const updateTotalAmountSQL = `
+      UPDATE orders SET total_amount = ? WHERE order_id = ?
+    `;
+
+    await db.promise().execute(updateTotalAmountSQL, [totalAmount, orderId]);
 
     // Clear Cart
     const clearCartSQL = 'DELETE FROM cart WHERE user_id = ?';
@@ -409,6 +419,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: 'Checkout failed' });
   }
 });
+
 
 
 
@@ -463,6 +474,6 @@ pool.query('SELECT 1 + 1 AS solution', (error, results, fields) => {
 
 //Start the Server
 app.listen(port, () => {
- console.log(`Server is running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
 });
 
