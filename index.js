@@ -392,12 +392,13 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
         await db.promise().execute(updateProductQuantitySQL, [item[2], item[1]]);
 
         // Check if the product's available_quantity reaches zero and remove it
-        const remainingQuantity = cartItem.available_quantity - item[2]; // <-- Error here
+        const remainingQuantity = item[4] - item[2]; // Using item instead of cartItem
         if (remainingQuantity <= 0) {
           await db.promise().execute(removeProductSQL, [item[1]]);
         }
       })
     );
+
 
 
     // Clear Cart
