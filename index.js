@@ -321,15 +321,6 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { shippingAddress, billingAddress, cartItems, totalAmount } = req.body;
 
-
-    // Retrieve user's email address from the database
-    const getUserEmailSQL = `
-      SELECT email FROM users WHERE id = ?
-    `;
-
-    const [emailRows, _] = await db.promise().execute(getUserEmailSQL, [userId]);
-    const userEmail = emailRows[0].email;
-
     // Create Billing and Shipping Addresses
     const createBillingAddressSQL = `
       INSERT INTO billing_addresses (user_id, street, city, state, zip)
