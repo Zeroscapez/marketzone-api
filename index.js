@@ -423,8 +423,8 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     await db.promise().execute(clearCartSQL, [userId]);
 
     const mailOptions = {
-      from: 'your_email@gmail.com',
-      to: req.user.email, // Assuming user email is stored in req.user.email
+      from: 'busterswordisbae@gmail.com',
+      to: 'agyeilomini@gmail.com',
       subject: 'Order Confirmation',
       html: `
         <h1>Your Order Details</h1>
