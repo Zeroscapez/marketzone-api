@@ -307,7 +307,7 @@ app.delete('/marketzone/api/cart/:productId', authenticateToken, (req, res) => {
 app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { shippingAddress, billingAddress, cardToken } = req.body;
+    const { shippingAddress, billingAddress, cardToken, amount } = req.body;
 
     // Create Billing and Shipping Addresses
     const createBillingAddressSQL = `
@@ -320,7 +320,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       VALUES (?, ?, ?, ?, ?)
     `;
 
-    const [billingAddressResult] = await db.promise().execute(createBillingAddressSQL, [
+    const billingAddressResult = await db.promise().execute(createBillingAddressSQL, [
       userId,
       billingAddress.street,
       billingAddress.city,
@@ -328,7 +328,7 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       billingAddress.zip,
     ]);
 
-    const [shippingAddressResult] = await db.promise().execute(createShippingAddressSQL, [
+    const shippingAddressResult = await db.promise().execute(createShippingAddressSQL, [
       userId,
       shippingAddress.street,
       shippingAddress.city,
@@ -336,35 +336,34 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       shippingAddress.zip,
     ]);
 
-    const billingAddressId = billingAddressResult.insertId;
-    const shippingAddressId = shippingAddressResult.insertId;
+    const billingAddressId = billingAddressResult[0].insertId;
+    const shippingAddressId = shippingAddressResult[0].insertId;
 
     // Create Order
     const createOrderSQL = `
-      INSERT INTO orders (user_id, billing_address_id, shipping_address_id)
-      VALUES (?, ?, ?)
+      INSERT INTO orders (user_id, billing_address_id, shipping_address_id, total_amount)
+      VALUES (?, ?, ?, ?)
     `;
 
-    const [orderResult] = await db.promise().execute(createOrderSQL, [
+    const orderResult = await db.promise().execute(createOrderSQL, [
       userId,
       billingAddressId,
       shippingAddressId,
+      amount,
     ]);
 
-    const orderId = orderResult.insertId;
+    const orderId = orderResult[0].insertId;
 
     // Fetch Cart Items
     const cartItemsSQL = `
-      SELECT c.product_id, p.price, c.quantity
+      SELECT c.product_id, p.name, p.price, c.quantity, p.quantity AS available_quantity
       FROM cart c
       INNER JOIN products p ON c.product_id = p.id
       WHERE c.user_id = ?
     `;
 
-    const [cartItemsResult] = await db.promise().query(cartItemsSQL, [userId]);
-    const cartItems = cartItemsResult;
-
-    let totalAmount = 0;
+    const cartItemsResult = await db.promise().query(cartItemsSQL, [userId]);
+    const cartItems = cartItemsResult[0];
 
     // Create Order Items and update product quantities
     const orderItems = cartItems.map((cartItem) => [
@@ -389,25 +388,16 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
 
     await Promise.all(
       orderItems.map(async (item) => {
-        totalAmount += item[3]; // Accumulate total amount
-
         await db.promise().execute(createOrderItemsSQL, item);
         await db.promise().execute(updateProductQuantitySQL, [item[2], item[1]]);
 
-        // Check if the product's available quantity reaches zero and remove it
+        // Check if the product's available_quantity reaches zero and remove it
         const remainingQuantity = cartItem.available_quantity - item[2];
         if (remainingQuantity <= 0) {
           await db.promise().execute(removeProductSQL, [item[1]]);
         }
       })
     );
-
-    // Update total amount in the orders table
-    const updateTotalAmountSQL = `
-      UPDATE orders SET total_amount = ? WHERE order_id = ?
-    `;
-
-    await db.promise().execute(updateTotalAmountSQL, [totalAmount, orderId]);
 
     // Clear Cart
     const clearCartSQL = 'DELETE FROM cart WHERE user_id = ?';
@@ -419,7 +409,6 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: 'Checkout failed' });
   }
 });
-
 
 
 
