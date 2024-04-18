@@ -309,6 +309,15 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { shippingAddress, billingAddress, cardToken, amount } = req.body;
 
+    // Calculate reward points earned from the order (2 points for every $1 spent)
+    const rewardPointsEarned = Math.floor(amount * 2);
+
+    // Update user's reward points
+    const updateRewardPointsSQL = `
+      UPDATE users SET reward_points = reward_points + ? WHERE id = ?
+    `;
+    await db.promise().execute(updateRewardPointsSQL, [rewardPointsEarned, userId]);
+
     // Create Billing and Shipping Addresses
     const createBillingAddressSQL = `
       INSERT INTO billing_addresses (user_id, street, city, state, zip)
@@ -399,18 +408,17 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
       })
     );
 
-
-
     // Clear Cart
     const clearCartSQL = 'DELETE FROM cart WHERE user_id = ?';
     await db.promise().execute(clearCartSQL, [userId]);
 
-    res.json({ success: true, message: 'Checkout successful', orderId });
+    res.json({ success: true, message: 'Checkout successful', orderId, rewardPointsEarned });
   } catch (error) {
     console.error('Checkout error:', error);
     res.status(500).json({ success: false, message: 'Checkout failed' });
   }
 });
+
 
 
 
