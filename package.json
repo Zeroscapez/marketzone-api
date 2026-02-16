@@ -6,32 +6,32 @@
     "node": "24.x"
   },
   "dependencies": {
-    "@stripe/react-stripe-js": "^2.3.1",
-    "@stripe/stripe-js": "^2.1.11",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "axios": "^1.5.1",
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "express-jwt": "^8.4.1",
-    "firebase": "^10.5.2",
+    "@stripe/react-stripe-js": "^5.6.0",
+    "@stripe/stripe-js": "^8.7.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "axios": "^1.13.5",
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-jwt": "^8.5.1",
+    "firebase": "^12.9.0",
     "js-cookie": "^3.0.5",
-    "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
     "mysql": "^2.18.1",
-    "mysql2": "^3.6.2",
-    "nodemailer": "^6.9.13",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.17.0",
-    "react-scripts": "^3.0.1",
-    "stripe": "^14.3.0",
-    "web-vitals": "^2.1.4",
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4"
+    "mysql2": "^3.17.1",
+    "nodemailer": "^8.0.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.0",
+    "react-scripts": "^0.0.0",
+    "stripe": "^20.3.1",
+    "web-vitals": "^5.1.0",
+    "webpack": "^5.105.2",
+    "webpack-cli": "^6.0.1"
   },
   "scripts": {
     "start": "node index.js"
@@ -55,6 +55,6 @@
     ]
   },
   "devDependencies": {
-    "gh-pages": "^6.0.0"
+    "gh-pages": "^6.3.0"
   }
 }
