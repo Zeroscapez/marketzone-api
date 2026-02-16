@@ -4,10 +4,13 @@ const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
+const stripeKey = process.env.STRIPE_KEY;
 const secretKey = process.env.SECRET_KEY;
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const authenticateToken = require('./authMiddleware');
 const nodemailer = require('nodemailer');
+const helmet = require('helmet')
 
 //const multer = require('multer');
 
@@ -16,9 +19,9 @@ const app = express();
 const port = process.env.PORT;
 
 app.use(cors());
-
+app.use(helmet());
 //module.exports = app;
-const stripe = require('stripe')('sk_test_51OAf3dEFbooIJPsjARXvnzJo13Hq8ArzV4bUbZew57Yjsw8GnDYq4IDoSWN36tpHXuaroWu239gcrx7xbRBDWpqd00BV6pxEWp');
+const stripe = require('stripe')(stripeKey);
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -30,11 +33,12 @@ const transporter = nodemailer.createTransport({
 
 
 // Create a MySQL database connection
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  connectionLimit: 10,
 });
 
 db.connect((err) => {
@@ -64,64 +68,56 @@ app.get('/', (req, res) => {
 
 
 // Create an endpoint for user registration
-app.post('/marketzone/api/register', (req, res) => {
+app.post('/marketzone/api/register', async (req, res) => {
+  try {
+    const { first_name, last_name, email, username, password, street, zip_code, state } = req.body;
 
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  // Get the registration data from the request body
-  const userData = req.body;
+    const sql = `
+      INSERT INTO users (first_name, last_name, email, username, password, street, zip_code, state)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-  const { first_name, last_name, email, username, password, street, zip_code, state } = userData;
-
-  const sql = `
-    INSERT INTO users (first_name, last_name, email, username, password, street, zip_code, state)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  db.query(sql, [first_name, last_name, email, username, password, street, zip_code, state], (error, results) => {
-    if (error) {
-      console.error('Database error:', error);
-      res.json({ success: false, message: 'Registration failed' });
-    } else {
-      console.log('User registered:', results);
-      res.json({ success: true, message: 'Registration successful' });
-    }
-  });
-
-  // Enable CORS for this specific route
-  res.header('Access-Control-Allow-Origin', '*');
-
-
-});
-
-
-
-app.post('/marketzone/api/login', (req, res) => {
-  const loginData = req.body;
-  const { username, password } = loginData;
-
-  // Implement the logic to verify the user's credentials
-  const sql = `SELECT id, username FROM users WHERE username = ? AND password = ?`;
-
-  db.query(sql, [username, password], (error, results) => {
-    if (error) {
-      console.error('Database error:', error);
-      res.json({ success: false, message: 'Login failed' });
-    } else {
-      if (results.length === 0) {
-        res.json({ success: false, message: 'Invalid username or password' });
-      } else {
-        // User is authenticated; generate a JWT token
-        const user = { id: results[0].id, username: username }; // Include 'id' in the payload
-        const token = jwt.sign(user, secretKey, { expiresIn: '24h' });
-
-
-        // Send the token in the response
-        res.json({ success: true, token, expiresIn: 24 * 60 * 60 }); // expiresIn in seconds
-
+    db.query(sql, [first_name, last_name, email, username, hashedPassword, street, zip_code, state],
+      (error) => {
+        if (error) return res.status(500).json({ success: false });
+        res.json({ success: true, message: 'Registration Successful' });
       }
+    );
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Registration Failed' });
+  }
+});
+
+
+
+app.post('/marketzone/api/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  const sql = `SELECT id, username, password FROM users WHERE username = ?`;
+
+  db.query(sql, [username], async (error, results) => {
+    if (error || results.length === 0) {
+      return res.json({ success: false, message: 'Invalid credentials' });
     }
+
+    const user = results[0];
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      return res.json({ success: false, message: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
+      expiresIn: '24h',
+    });
+
+    res.json({ success: true, token });
   });
 });
+
 
 
 
@@ -169,21 +165,23 @@ app.get('/marketzone/api/accountDetails', authenticateToken, (req, res) => {
 });
 
 //  API endpoint for password reset
-app.post('/marketzone/api/resetPassword', authenticateToken, (req, res) => {
-  const userId = req.user.id;
-  const newPassword = req.body.newPassword;
+app.post('/marketzone/api/resetPassword', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { newPassword } = req.body;
 
-  // Implement the logic to reset the user's password in your database
-  const sql = `UPDATE users SET password = ? WHERE id = ?`;
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-  db.query(sql, [newPassword, userId], (error, results) => {
-    if (error) {
-      console.error('Database error:', error);
-      res.json({ success: false, message: 'Password reset failed' });
-    } else {
-      res.json({ success: true, message: 'Password reset successful' });
-    }
-  });
+    const sql = `UPDATE users SET password = ? WHERE id = ?`;
+
+    db.query(sql, [hashedPassword, userId], (error) => {
+      if (error) return res.status(500).json({ success: false });
+      res.json({ success: true });
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
 });
 
 //  API endpoint for listing products
@@ -406,17 +404,27 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     `;
 
     await Promise.all(
-      orderItems.map(async (item) => {
-        await db.promise().execute(createOrderItemsSQL, item);
-        await db.promise().execute(updateProductQuantitySQL, [item[2], item[1]]);
+      cartItems.map(async (cartItem) => {
+        await db.promise().execute(createOrderItemsSQL, [
+          orderId,
+          cartItem.product_id,
+          cartItem.quantity,
+          cartItem.price * cartItem.quantity,
+        ]);
 
-        // Check if the product's available_quantity reaches zero and remove it
-        const remainingQuantity = item[4] - item[2]; // Using item instead of cartItem
-        if (remainingQuantity <= 0) {
-          await db.promise().execute(removeProductSQL, [item[1]]);
+        const newQuantity = cartItem.available_quantity - cartItem.quantity;
+
+        if (newQuantity <= 0) {
+          await db.promise().execute(removeProductSQL, [cartItem.product_id]);
+        } else {
+          await db.promise().execute(updateProductQuantitySQL, [
+            cartItem.quantity,
+            cartItem.product_id,
+          ]);
         }
       })
     );
+
 
     // Clear Cart
     const clearCartSQL = 'DELETE FROM cart WHERE user_id = ?';
