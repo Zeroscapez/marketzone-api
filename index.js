@@ -6,6 +6,7 @@ const cors = require('cors');
 const path = require('path');
 const stripeKey = process.env.STRIPE_KEY;
 const secretKey = process.env.SECRET_KEY;
+const emailto = process.env.EMAIL_TO;
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const authenticateToken = require('./authMiddleware');
@@ -122,7 +123,7 @@ app.post('/marketzone/api/login', async (req, res) => {
 
 app.get('/marketzone/api/userData', authenticateToken, (req, res) => {
   const userId = req.user.id;
-  console.log(req.user.id);
+
   // Query user data from your database based on the userId
   const sql = `SELECT username FROM users WHERE id = ?`;
 
@@ -160,7 +161,7 @@ app.get('/marketzone/api/accountDetails', authenticateToken, (req, res) => {
     }
   });
 
-  res.header('Access-Control-Allow-Origin', '*');
+
 });
 
 //  API endpoint for password reset
@@ -199,7 +200,7 @@ app.post('/marketzone/api/listProducts', authenticateToken, (req, res) => {
       console.error('Database error:', error);
       res.json({ success: false, message: 'Product listing failed' });
     } else {
-      console.log('Product listed:', results);
+
       res.json({ success: true, message: 'Product listed successfully' });
     }
   });
@@ -252,8 +253,8 @@ app.get('/marketzone/api/cart', authenticateToken, (req, res) => {
   SELECT c.product_id, p.image, p.name, p.price, c.quantity
   FROM cart c
   INNER JOIN products p ON c.product_id = p.id
-  WHERE c.user_id = ?
-`;
+  WHERE c.user_id = ?`
+    ;
 
 
   db.query(sql, [userId], (error, results) => {
@@ -284,7 +285,7 @@ app.post('/marketzone/api/addToCart', authenticateToken, (req, res) => {
       console.error('Database error:', error);
       res.status(500).json({ success: false, message: 'Failed to add product to cart' });
     } else {
-      console.log('Product added to cart:', results);
+
       res.json({ success: true, message: 'Product added to cart successfully' });
     }
   });
@@ -302,7 +303,7 @@ app.delete('/marketzone/api/cart/:productId', authenticateToken, (req, res) => {
       console.error('Database error:', error);
       res.status(500).json({ success: false, message: 'Failed to delete item from cart' });
     } else {
-      console.log('Item deleted from cart:', results);
+
       res.json({ success: true, message: 'Item deleted from cart successfully' });
     }
   });
@@ -429,9 +430,14 @@ app.post('/marketzone/api/checkout', authenticateToken, async (req, res) => {
     const clearCartSQL = 'DELETE FROM cart WHERE user_id = ?';
     await db.promise().execute(clearCartSQL, [userId]);
 
+    const userResult = await db.promise().query(
+      'SELECT email FROM users WHERE id = ?', [userId]
+    );
+    const userEmail = userResult[0][0].email;
+
     const mailOptions = {
-      from: 'busterswordisbae@gmail.com',
-      to: 'agyeilomini@gmail.com',
+      from: emailto,
+      to: userEmail,
       subject: 'Order Confirmation',
       html: `
         <h1>Your Order Details</h1>
